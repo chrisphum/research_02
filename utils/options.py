@@ -22,8 +22,9 @@ def args_parser():
                         help='differential privacy mechanism')
     parser.add_argument('--dp_epsilon', type=float, default=20,
                         help='differential privacy epsilon')
-    parser.add_argument('--dp_epsilon_global)', type=int, default=0, help="Add Global Noise Epsilon_2")
+    parser.add_argument('--dp_epsilon_global', type=int, default=0, help="Add Global Noise Epsilon_2")
     parser.add_argument('--dp_clip', type=float, default=10,
                         help='differential privacy clip')
+    parser.add_argument('--runs', type=int, default=1, help="How many times to repeat experiment")
     args = parser.parse_args()
     return args

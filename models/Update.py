@@ -43,6 +43,7 @@ class rnnUpdateDP(object):
         optimizer = torch.optim.SGD(net.parameters(), lr=self.lr, momentum=self.args.momentum)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=self.args.lr_decay)
         total_loss = 0
+        net.zero_grad()
         for line_tensor, category_tensor in self.ldr_train:
                 hidden = torch.zeros(1, 128)
                 # net.zero_grad()
@@ -54,7 +55,7 @@ class rnnUpdateDP(object):
                 if self.args.dp_mechanism != 'no_dp':
                     self.clip_gradients(net)
                 count += 1
-                if (count % args.minibatch == 0) or (count == len(self.idxs_sample)):
+                if (count % self.args.minibatch == 0) or (count == len(self.idxs_sample)) or (self.args.minibatch == 0):
                     optimizer.step()
                     scheduler.step()
                     optimizer.zero_grad()
@@ -92,7 +93,7 @@ class LocalUpdateDP(object):
         self.args = args
         self.loss_func = nn.CrossEntropyLoss()
         self.idxs_sample = np.random.choice(list(idxs), int(len(idxs)), replace=False)
-        self.ldr_train = DataLoader(DatasetSplit(dataset, self.idxs_sample), batch_size=int(self.batchMod * len(self.idxs_sample)),
+        self.ldr_train = DataLoader(DatasetSplit(dataset, self.idxs_sample), batch_size=int(len(self.idxs_sample)),
                                     shuffle=True)
         self.idxs = idxs
         self.times = self.args.epochs * self.args.frac
@@ -104,20 +105,27 @@ class LocalUpdateDP(object):
         optimizer = torch.optim.SGD(net.parameters(), lr=self.lr, momentum=self.args.momentum)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=self.args.lr_decay)
         loss_client = 0
+        count = 0
+        net.zero_grad()
         for images, labels in self.ldr_train:
             images, labels = images.to(self.args.device), labels.to(self.args.device)
-            net.zero_grad()
+            # net.zero_grad()
             log_probs = net(images)
             loss = self.loss_func(log_probs, labels)
             loss.backward()
             if self.args.dp_mechanism != 'no_dp':
                 self.clip_gradients(net)
-            optimizer.step()
-            scheduler.step()
-            # add noises to parameters
-            if self.args.dp_mechanism != 'no_dp':
-                self.add_noise(net)
-            loss_client = loss.item()
+            count += 1
+            # print(self.args.minibatch)
+            # print(count)
+            if (count % self.args.minibatch == 0) or (count == len(self.idxs_sample)) or (self.args.minibatch == 0):
+                optimizer.step()
+                scheduler.step()
+                net.zero_grad()
+                # add noises to parameters
+                if self.args.dp_mechanism != 'no_dp':
+                    self.add_noise(net)
+                loss_client = loss.item()
         self.lr = scheduler.get_last_lr()[0]
         return net.state_dict(), loss_client
     
