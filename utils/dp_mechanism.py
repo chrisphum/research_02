@@ -1,11 +1,11 @@
 import numpy as np
 
-def calculate_noise_scale(args, times):
+def calculate_noise_scale(epsilon, times):
 
     # print (args.dp_epsilon)
     
-    if args.dp_mechanism == 'Laplace':
-        epsilon_single_query = args.dp_epsilon / times
+    # if args.dp_mechanism == 'Laplace':
+        epsilon_single_query = epsilon / times
         scale = 1
         return 1 / (scale * epsilon_single_query )
 

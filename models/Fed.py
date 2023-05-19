@@ -14,7 +14,7 @@ def FedWeightAvg(w, size, args, max_idxs_size, lr):
     totalSize = sum(size)
 
     if args.dp_epsilon_global > 0:
-        noise_scale = calculate_noise_scale(args, times)
+        noise_scale = calculate_noise_scale(args.dp_epsilon_global, times)
         sensitivity = cal_sensitivity(lr, args.dp_clip, max_idxs_size)
     
     w_avg = copy.deepcopy(w[0])

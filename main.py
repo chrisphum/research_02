@@ -9,19 +9,24 @@ from models.Update import LocalUpdateDP, rnnUpdateDP
 from models.Nets import CNNMnist, RNN
 from models.Fed import FedWeightAvg
 from models.test import test_img, test_name
-# from opacus.grad_sample import GradSampleModule
+from opacus.grad_sample import GradSampleModule
 import pandas as pd
 
 if __name__ == '__main__':
 
-    args = args_parser()
-    numberRuns = args.runs
-    numberEpochs = args.epochs
+    print("\n-----------------------------------------------------------------\n")
+
+    argsOriginal = args_parser()
+    print(str(argsOriginal) + "\n")
+    numberRuns = argsOriginal.runs
+    numberEpochs = argsOriginal.epochs
     df = pd.DataFrame(index=range(numberEpochs),columns=range(numberRuns))
+    tStart = time.time()
 
     for runIteration in range(numberRuns):
 
         resultsList = []
+
 
         seedNumber = random.randrange(100, 999)
         random.seed(seedNumber)
@@ -30,7 +35,7 @@ if __name__ == '__main__':
         torch.cuda.manual_seed_all(seedNumber)
         torch.cuda.manual_seed(seedNumber)
 
-        args = args_parser()
+        args = copy.deepcopy(argsOriginal)
         args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
         dict_users = {}
         dataset_train, dataset_test = None, None
@@ -46,7 +51,7 @@ if __name__ == '__main__':
                 dict_users[i] = set(np.random.choice(all_idxs, num_items, replace=False))
                 all_idxs = list(set(all_idxs) - dict_users[i])
             net_glob = CNNMnist(args=args).to(args.device)
-            # net_glob = GradSampleModule(net_glob)
+            net_glob = GradSampleModule(net_glob)
         
         else:
             from utils.rnn_loader import RNNDataset
@@ -57,7 +62,6 @@ if __name__ == '__main__':
             num_train_examples = 15000
             num_test_examples = 100
             args.lr = 0.005
-            args.minibatch = 10
 
             dataset_train = RNNDataset(num_train_examples,True,n_categories)
             dataset_test= RNNDataset(num_test_examples,False,n_categories)
@@ -133,10 +137,15 @@ if __name__ == '__main__':
                 acc_t, loss_t = test_name(net_glob, dataset_test, args)
 
             t_end = time.time()
-            print("{:3d},{:.2f}".format(iter, acc_t))
+            # print("{:3d},{:.2f}".format(iter, acc_t))
 
             resultsList.append(acc_t.item())
         df[runIteration] = resultsList
+        print("Run " + str(runIteration + 1) + " Of " + str(numberRuns) + " Complete")
     df['mean'] = df.mean(axis=1)
     print(df['mean'].to_string(index=False))
-
+    print("\n")
+    tEnd = time.time()
+    print("Time:")
+    print(tEnd - tStart)
+    print("\n")
